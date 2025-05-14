@@ -18,6 +18,7 @@ class Calculator:
         self.field.grid(row = 0, column = 0, columnspan=4)
         label = ttk.Label(text='    ', width=10)
         label.grid(row=1, column=0)
+        grid = 0
 
         self.createButtons()
         self.result_shown = False
