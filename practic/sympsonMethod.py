@@ -15,10 +15,10 @@ class GraphBuilder():
         self.centerY = 500
         self.scale = 60
         self.shift = 10
-        window.bind("<Up>", lambda e: self.graphOffset(0, -5))
-        window.bind("<Down>", lambda e: self.graphOffset(0, 5))
-        window.bind("<Left>", lambda e: self.graphOffset(-5, 0))
-        window.bind("<Right>", lambda e: self.graphOffset(5, 0))
+        window.bind("<Up>", lambda e: self.graphOffset(0, -10))
+        window.bind("<Down>", lambda e: self.graphOffset(0, 10))
+        window.bind("<Left>", lambda e: self.graphOffset(-10, 0))
+        window.bind("<Right>", lambda e: self.graphOffset(10, 0))
         window.bind('<Delete>', lambda e: self.rebooting())
         window.bind('<Return>', lambda e: self.createGraph())
         
@@ -56,15 +56,19 @@ class GraphBuilder():
         self.entry = ttk.Entry(controlFrame)  
         self.entry.pack(anchor='nw', pady=self.py, padx=self.px, fill='x')
         
-        ttk.Button(controlFrame, style = "Tall.TButton", text='Построить', command=self.createGraph).pack(anchor='nw', pady=self.py, padx=self.px, fill='both')
+        
+        ttk.Label(controlFrame, text=f"Начало промежутка", style='My1.TLabel').pack(anchor='nw', pady=self.py, padx=self.px)
         self.a = ttk.Entry(controlFrame)
         self.a.pack(anchor='nw', pady=self.py, padx=self.px, fill='x')
+        ttk.Label(controlFrame, text=f"Конец промежутка", style='My1.TLabel').pack(anchor='nw', pady=self.py, padx=self.px)
 
         self.b = ttk.Entry(controlFrame)
         self.b.pack(anchor='nw', pady=self.py, padx=self.px, fill='x')
+        ttk.Label(controlFrame, text=f"Погрешность", style='My1.TLabel').pack(anchor='nw', pady=self.py, padx=self.px)
 
         self.n = ttk.Entry(controlFrame)
         self.n.pack(anchor='nw', pady=self.py, padx=self.px, fill='x')
+
     
         sc=int(self.scale)
         ttk.Label(controlFrame, text=f"Масштаб", style='My1.TLabel').pack(anchor='nw', pady=self.py, padx=self.px)
@@ -74,9 +78,11 @@ class GraphBuilder():
         info = tk.Frame(controlFrame, width=300, height = 500)
         info.pack(anchor='nw', pady=self.py, padx=self.px)
         info.configure(background='#FFDEAD', highlightbackground='#DEB887')
+
        
         ttk.Button(controlFrame,style = "Tall.TButton", text = 'Сбросить', command=self.rebooting).pack(anchor='se', pady=self.py, padx=self.px, fill='x')
         self.slider.set(self.scale)
+        ttk.Button(controlFrame, style = "Tall.TButton", text='Построить', command=self.createGraph).pack(anchor='nw', pady=self.py, padx=self.px, fill='both')
         
         ttk.Label(info, style='My.TLabel', text='← - Сдвинуть ось Oy влево').pack(anchor='nw', pady=self.py, padx=self.px)
         ttk.Label(info, style='My.TLabel', text='→ - Сдвинуть ось Oy вправо').pack(anchor='nw', pady=self.py, padx=self.px)
@@ -112,8 +118,9 @@ class GraphBuilder():
         y = self.entry.get()  
         self.createDPSK()  
         xLen = (self.centerX*2 - 2*self.shift)
-        a = -int(self.a.get())
-        b = int(self.b.get())
+       
+        a = -xLen
+        b = xLen
         h = 0.01
         n = int((b - a) / h)
         points = []
@@ -151,6 +158,10 @@ class GraphBuilder():
         self.centerY = 500
         self.scale = 60
         self.slider.set(self.scale)
+        self.a.delete(0, tk.END)
+        self.b.delete(0, tk.END)
+        self.n.delete(0, tk.END)
+        self.entry.delete(0, tk.END)
         self.createDPSK()
         
         if self.entry.get() !="":
@@ -158,23 +169,54 @@ class GraphBuilder():
     
     def sympsonMethod(self):
         try:
+            # Получаем границы и количество отрезков
             a = float(self.a.get())
             b = float(self.b.get())
             n = int(self.n.get())
             
-            h = (b - a) / n
+            # Очищаем предыдущие рисунки
+            self.canv.delete("simpson")
+            
+            # Рисуем график функции
             points = []
-            
-            for i in range(n + 1):
-                x = a + i * h
+            x = a
+            while x <= b:
                 y = self.f(x)
-                points.append((self.centerX + x * self.scale, self.centerY, self.centerX + x * self.scale, self.centerY - y * self.scale))
+                px = self.centerX + x * self.scale
+                py = self.centerY - y * self.scale
+                points.append((px, py))
+                x += (b - a) / 100  # 100 точек для плавного графика
             
-            self.canv.create_line(points, fill="blue", width=2)
+            self.canv.create_line(points, fill="blue", width=2, tags="simpson")
+            
+            # Рисуем разбиение и параболы
+            h = (b - a) / n
+            x = a
+            while x <= b:
+                # Вертикальные линии разбиения
+                px = self.centerX + x * self.scale
+                self.canv.create_line(px, self.centerY, px, 
+                                    self.centerY - self.f(x)*self.scale, 
+                                    fill="red", dash=(2,2), tags="simpson")
+                
+                
+                
+                x += h
+            
+            # Вычисляем интеграл (упрощённая формула)
+            sum_odd = self.f(a + h) + self.f(a + 3*h) + self.f(a + 5*h)
+            sum_even = self.f(a + 2*h) + self.f(a + 4*h)
+            integral = (h/3) * (self.f(a) + self.f(b) + 4*sum_odd + 2*sum_even)
+            
+            # Выводим результат на график
+            self.canv.create_text(self.centerX, 30, 
+                                text=f"Интеграл ≈ {integral:.3f}", 
+                                font=("Arial", 12), tags="simpson")
+            
+            return integral
             
         except:
-            pass
-
+            return None
 
 
 
