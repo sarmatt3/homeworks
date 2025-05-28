@@ -169,6 +169,7 @@ class GraphBuilder():
     
     def sympsonMethod(self):
         try:
+            integral = 0
             # Получаем границы и количество отрезков
             a = float(self.a.get())
             b = float(self.b.get())
@@ -192,6 +193,7 @@ class GraphBuilder():
             # Рисуем разбиение и параболы
             h = (b - a) / n
             x = a
+            x1 = b
             while x <= b:
                 # Вертикальные линии разбиения
                 px = self.centerX + x * self.scale
@@ -204,9 +206,9 @@ class GraphBuilder():
                 x += h
             
             # Вычисляем интеграл (упрощённая формула)
-            sum_odd = self.f(a + h) + self.f(a + 3*h) + self.f(a + 5*h)
-            sum_even = self.f(a + 2*h) + self.f(a + 4*h)
-            integral = (h/3) * (self.f(a) + self.f(b) + 4*sum_odd + 2*sum_even)
+            for i in range(n):
+                integral += (x1 - x)*self.f(x)
+                
             
             # Выводим результат на график
             self.canv.create_text(self.centerX, 30, 
